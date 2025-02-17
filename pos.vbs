@@ -4,7 +4,7 @@ Set objShell = CreateObject("Shell.Application")
 ' Verificar si el script ya está ejecutándose con privilegios de administrador
 If Not IsElevated() Then
     ' Si no se está ejecutando con privilegios, pedir permisos de administrador
-    objShell.ShellExecute "cmd.exe", "/c start-next.bat", "", "runas", 1
+    objShell.ShellExecute "cmd.exe", "/c start-next.bat && exit", "", "runas", 1
     WScript.Quit ' Finaliza el script después de pedir los permisos
 End If
 
@@ -25,7 +25,18 @@ Next
 If Not serverRunning Then
     ' Si el servidor no está en ejecución, ejecuta el .bat
     Set shell = CreateObject("WScript.Shell")
-    shell.Run "cmd.exe /c iniciador.bat", 0, False
+    ' Ejecutar el .bat con una ventana de consola para mostrar la barra de progreso
+    shell.Run "cmd.exe /c iniciador.bat && exit", 1, True ' Usar "True" para esperar a que termine
+    Set shell = Nothing
+End If
+
+' Esperar a que el proceso de compilación o instalación termine antes de iniciar el servidor
+WScript.Sleep 5000 ' Esperar 5 segundos para asegurarse de que npm install / build ha terminado
+
+' Iniciar el servidor si no se está ejecutando (sin mostrar la ventana del cmd)
+If Not serverRunning Then
+    Set shell = CreateObject("WScript.Shell")
+    shell.Run "cmd.exe /c npm start >nul 2>&1", 0, False ' Inicia npm start en segundo plano sin mostrar la ventana
     Set shell = Nothing
 End If
 
@@ -44,3 +55,6 @@ Function IsElevated()
     IsElevated = (Err.Number = 0)
     On Error GoTo 0
 End Function
+
+' Añadir un exit para cerrar todo el proceso de forma segura
+WScript.Quit
